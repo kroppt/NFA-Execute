@@ -75,6 +75,16 @@ func εClosure(trans []map[rune]Set, s Set) (ns Set) {
 	return ns
 }
 
+func rmEmpty(strs []string) (out []string) {
+	out = make([]string, 0)
+	for _, s := range strs {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
 func main() {
 	flag.Parse()
 	// load NFA
@@ -91,6 +101,7 @@ func main() {
 	fstr := strings.Replace(string(buf), "\r", "", -1)
 	// remove carriage returns
 	strs := strings.Split(fstr, "\n")
+	strs = rmEmpty(strs)
 	n, err := strconv.Atoi(strs[0])
 	if n < 2 {
 		fmt.Fprintln(os.Stderr, "there must be at least 2 nodes")
@@ -117,6 +128,7 @@ func main() {
 	var trans = make([]map[rune]Set, n)
 	for i := range trans {
 		trans[i] = make(map[rune]Set)
+		trans[i]['ε'] = NewSetInit(i)
 	}
 	for _, str := range strs[2:] {
 		parseEdge(trans, str)
@@ -134,17 +146,13 @@ func main() {
 	r, _, err := input.ReadRune()
 	// begin algorithm
 	var oldState Set
-	var initState Set
-	initState, ok := trans[0]['ε']
-	if !ok {
-		initState = NewSet()
-	}
+	initState, _ := trans[0]['ε']
 	initState.Add(0)
 	currState := εClosure(trans, initState)
+	if pstate {
+		fmt.Println(currState.Print())
+	}
 	for err == nil {
-		if pstate {
-			fmt.Println(currState.Print())
-		}
 		oldState = currState
 		currState = NewSet()
 		oldState.Range(func(i int) {
@@ -156,6 +164,9 @@ func main() {
 		if currState.IsEmpty() {
 			fmt.Fprintln(os.Stderr, "input not accepted")
 			os.Exit(1)
+		}
+		if pstate {
+			fmt.Println(currState.Print())
 		}
 		r, _, err = input.ReadRune()
 	}
