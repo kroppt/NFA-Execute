@@ -132,7 +132,12 @@ func main() {
 	r, _, err := input.ReadRune()
 	// begin algorithm
 	var oldState Set
-	initState, _ := trans[0]['ε']
+	var initState Set
+	initState, ok := trans[0]['ε']
+	if !ok {
+		initState = NewSet()
+	}
+	initState.Add(0)
 	currState := εClosure(trans, initState)
 	for err == nil {
 		fmt.Println(currState.Print())
