@@ -13,9 +13,11 @@ import (
 )
 
 var flagin string
+var pstate bool
 
 func init() {
 	flag.StringVar(&flagin, "in", "stdin", "file for input string")
+	flag.BoolVar(&pstate, "print", false, "prints intermediate states")
 }
 
 func parseEdge(trans []map[rune]Set, line string) {
@@ -140,7 +142,9 @@ func main() {
 	initState.Add(0)
 	currState := εClosure(trans, initState)
 	for err == nil {
-		fmt.Println(currState.Print())
+		if pstate {
+			fmt.Println(currState.Print())
+		}
 		oldState = currState
 		currState = NewSet()
 		oldState.Range(func(i int) {
