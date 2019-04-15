@@ -53,7 +53,7 @@ func main() {
 	// load NFA
 	args := os.Args
 	if len(args) != 1 {
-		fmt.Fprintf(os.Stderr, "there must be 1 argument for the input file\n")
+		fmt.Fprintln(os.Stderr, "there must be 1 argument for the input file")
 		os.Exit(1)
 	}
 	buf, err := ioutil.ReadFile(os.Args[0])
@@ -64,19 +64,19 @@ func main() {
 	strs := strings.Split(string(buf), "\n")
 	n, err := strconv.Atoi(strs[0])
 	if n < 2 {
-		fmt.Fprintf(os.Stderr, "there must be at least 2 nodes\n")
+		fmt.Fprintln(os.Stderr, "there must be at least 2 nodes")
 		os.Exit(1)
 	}
 	accept := make([]bool, n)
 	states := strings.Split(strs[1], " ")
 	if len(states) <= 0 {
-		fmt.Fprintf(os.Stderr, "there must be at least 1 accepting state\n")
+		fmt.Fprintln(os.Stderr, "there must be at least 1 accepting state")
 		os.Exit(1)
 	}
 	for _, str := range states {
 		i, err := strconv.Atoi(str)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "error reading error states\n")
+			fmt.Fprintln(os.Stderr, "error reading error states")
 			os.Exit(1)
 		}
 		if i >= n {
@@ -111,7 +111,7 @@ func main() {
 		})
 		currState = εClosure(trans, currState)
 		if currState.IsEmpty() {
-			fmt.Fprintf(os.Stderr, "error state, exiting\n")
+			fmt.Fprintln(os.Stderr, "input not accepted")
 			os.Exit(1)
 		}
 		r, _, err = input.ReadRune()
@@ -122,6 +122,6 @@ func main() {
 			os.Exit(0)
 		}
 	})
-	fmt.Fprintf(os.Stderr, "input not accepted\n")
+	fmt.Fprintln(os.Stderr, "input not accepted")
 	os.Exit(1)
 }
