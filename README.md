@@ -18,6 +18,8 @@ or
 $ NFA-Execute nfa.txt < str.txt
 ```
 
+Note that newlines will be counted as characters in the input.
+
 ### Format
 
 NFA:
