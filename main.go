@@ -3,12 +3,15 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
+
+	. "github.com/kroppt/NFA-Execute/set"
 )
 
-func parseEdge(m []map[rune]*set, line string) {
+func parseEdge(m []map[rune]*Set, line string) {
 	n := len(m)
 	strs := strings.Split(line, " ")
 	if len(strs) != 3 {
@@ -20,7 +23,7 @@ func parseEdge(m []map[rune]*set, line string) {
 		fmt.Fprintf(os.Stderr, "error parsing edge index \"%s\"\n", strs[0])
 		os.Exit(1)
 	}
-	if n1 > n {
+	if n1 >= n {
 		fmt.Fprintf(os.Stderr, "error parsing edge: index %d out of bounds \n", n1)
 		os.Exit(1)
 	}
@@ -29,7 +32,7 @@ func parseEdge(m []map[rune]*set, line string) {
 		fmt.Fprintf(os.Stderr, "error parsing edge index \"%s\"\n", strs[1])
 		os.Exit(1)
 	}
-	if n2 > n {
+	if n2 >= n {
 		fmt.Fprintf(os.Stderr, "error parsing edge: index %d out of bounds \n", n2)
 		os.Exit(1)
 	}
@@ -38,25 +41,87 @@ func parseEdge(m []map[rune]*set, line string) {
 		os.Exit(1)
 	}
 	r := []rune(strs[2])[0]
-	m[n1][r] = newSet(n2)
+	m[n1][r] = NewSetInit(n2)
+}
+
+func εClosure(trans []map[rune]*Set, s *Set) (ns *Set) {
+	ns = NewSet()
+	return ns
 }
 
 func main() {
 	// load NFA
-	scan := bufio.NewScanner(os.Stdin)
-	scan.Scan()
-	in := scan.Text()
-	n, err := strconv.Atoi(in)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, err.Error())
+	args := os.Args
+	if len(args) != 1 {
+		fmt.Fprintf(os.Stderr, "there must be 1 argument for the input file\n")
 		os.Exit(1)
 	}
-	var trans = make([]map[rune]*set, n)
+	buf, err := ioutil.ReadFile(os.Args[0])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		os.Exit(1)
+	}
+	strs := strings.Split(string(buf), "\n")
+	n, err := strconv.Atoi(strs[0])
+	if n < 2 {
+		fmt.Fprintf(os.Stderr, "there must be at least 2 nodes\n")
+		os.Exit(1)
+	}
+	accept := make([]bool, n)
+	states := strings.Split(strs[1], " ")
+	if len(states) <= 0 {
+		fmt.Fprintf(os.Stderr, "there must be at least 1 accepting state\n")
+		os.Exit(1)
+	}
+	for _, str := range states {
+		i, err := strconv.Atoi(str)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error reading error states\n")
+			os.Exit(1)
+		}
+		if i >= n {
+			fmt.Fprintf(os.Stderr, "accepting state %d is outside bounds\n", i)
+			os.Exit(1)
+		}
+		accept[i] = true
+	}
+	var trans = make([]map[rune]*Set, n)
 	for i := range trans {
-		trans[i] = make(map[rune]*set)
+		trans[i] = make(map[rune]*Set)
+		trans[i]['ε'] = NewSetInit(i)
 	}
-	for scan.Scan() {
-		in = scan.Text()
-		parseEdge(trans, in)
+	for _, str := range strs[2:] {
+		parseEdge(trans, str)
 	}
+	// read input
+	input := bufio.NewReader(os.Stdin)
+	r, _, err := input.ReadRune()
+	// begin algorithm
+	var oldState *Set
+	initState, _ := trans[0]['ε']
+	currState := εClosure(trans, initState)
+	for err == nil {
+		currState.Print()
+		oldState = currState
+		currState = NewSet()
+		oldState.Range(func(i int) {
+			if s, ok := trans[i][r]; ok {
+				currState = currState.Union(s)
+			}
+		})
+		currState = εClosure(trans, currState)
+		if currState.IsEmpty() {
+			fmt.Fprintf(os.Stderr, "error state, exiting\n")
+			os.Exit(1)
+		}
+		r, _, err = input.ReadRune()
+	}
+	currState.Range(func(i int) {
+		if accept[i] {
+			fmt.Println("input accepted")
+			os.Exit(0)
+		}
+	})
+	fmt.Fprintf(os.Stderr, "input not accepted\n")
+	os.Exit(1)
 }
