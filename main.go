@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -11,8 +12,14 @@ import (
 	. "github.com/kroppt/NFA-Execute/set"
 )
 
-func parseEdge(m []map[rune]*Set, line string) {
-	n := len(m)
+var flagin string
+
+func init() {
+	flag.StringVar(&flagin, "in", "stdin", "file for input string")
+}
+
+func parseEdge(trans []map[rune]Set, line string) {
+	n := len(trans)
 	strs := strings.Split(line, " ")
 	if len(strs) != 3 {
 		fmt.Fprintf(os.Stderr, "error parsing edge \"%s\"\n", line)
@@ -41,27 +48,47 @@ func parseEdge(m []map[rune]*Set, line string) {
 		os.Exit(1)
 	}
 	r := []rune(strs[2])[0]
-	m[n1][r] = NewSetInit(n2)
+	if _, ok := trans[n1][r]; ok {
+		trans[n1][r].Add(n2)
+	} else {
+		trans[n1][r] = NewSetInit(n2)
+	}
 }
 
-func εClosure(trans []map[rune]*Set, s *Set) (ns *Set) {
-	ns = NewSet()
+func εClosure(trans []map[rune]Set, s Set) (ns Set) {
+	// iterate until no change
+	ns = s.Copy()
+	var Δs Set
+	iterf := func(i int) {
+		if s, ok := trans[i]['ε']; ok {
+			Δs.Union(s)
+		}
+	}
+	Δb := true
+	for Δb {
+		Δs = NewSet()
+		ns.Range(iterf)
+		Δb = ns.Union(Δs)
+	}
 	return ns
 }
 
 func main() {
+	flag.Parse()
 	// load NFA
 	args := os.Args
-	if len(args) != 1 {
-		fmt.Fprintln(os.Stderr, "there must be 1 argument for the input file")
+	if len(args) < 2 {
+		fmt.Fprintln(os.Stderr, "there must be at least 1 argument for the input file")
 		os.Exit(1)
 	}
-	buf, err := ioutil.ReadFile(os.Args[0])
+	buf, err := ioutil.ReadFile(args[len(args)-1])
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%v\n", err)
 		os.Exit(1)
 	}
-	strs := strings.Split(string(buf), "\n")
+	fstr := strings.Replace(string(buf), "\r", "", -1)
+	// remove carriage returns
+	strs := strings.Split(fstr, "\n")
 	n, err := strconv.Atoi(strs[0])
 	if n < 2 {
 		fmt.Fprintln(os.Stderr, "there must be at least 2 nodes")
@@ -85,28 +112,35 @@ func main() {
 		}
 		accept[i] = true
 	}
-	var trans = make([]map[rune]*Set, n)
+	var trans = make([]map[rune]Set, n)
 	for i := range trans {
-		trans[i] = make(map[rune]*Set)
-		trans[i]['ε'] = NewSetInit(i)
+		trans[i] = make(map[rune]Set)
 	}
 	for _, str := range strs[2:] {
 		parseEdge(trans, str)
 	}
 	// read input
-	input := bufio.NewReader(os.Stdin)
+	infile := os.Stdin
+	if flagin != "stdin" {
+		if infile, err = os.Open(flagin); err != nil {
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			os.Exit(1)
+		}
+		defer infile.Close()
+	}
+	input := bufio.NewReader(infile)
 	r, _, err := input.ReadRune()
 	// begin algorithm
-	var oldState *Set
+	var oldState Set
 	initState, _ := trans[0]['ε']
 	currState := εClosure(trans, initState)
 	for err == nil {
-		currState.Print()
+		fmt.Println(currState.Print())
 		oldState = currState
 		currState = NewSet()
 		oldState.Range(func(i int) {
 			if s, ok := trans[i][r]; ok {
-				currState = currState.Union(s)
+				currState.Union(s)
 			}
 		})
 		currState = εClosure(trans, currState)
