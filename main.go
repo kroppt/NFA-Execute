@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	. "github.com/kroppt/NFA-Execute/set"
+	. "github.com/kroppt/IntSet"
 )
 
 var flagin string
