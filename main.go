@@ -61,10 +61,11 @@ func εClosure(trans []map[rune]Set, s Set) (ns Set) {
 	// iterate until no change
 	ns = s.Copy()
 	var Δs Set
-	iterf := func(i int) {
+	iterf := func(i int) bool {
 		if s, ok := trans[i]['ε']; ok {
 			Δs.Union(s)
 		}
+		return true
 	}
 	Δb := true
 	for Δb {
@@ -155,10 +156,11 @@ func main() {
 	for err == nil {
 		oldState = currState
 		currState = NewSet()
-		oldState.Range(func(i int) {
+		oldState.Range(func(i int) bool {
 			if s, ok := trans[i][r]; ok {
 				currState.Union(s)
 			}
+			return true
 		})
 		currState = εClosure(trans, currState)
 		if currState.IsEmpty() {
@@ -170,11 +172,12 @@ func main() {
 		}
 		r, _, err = input.ReadRune()
 	}
-	currState.Range(func(i int) {
+	currState.Range(func(i int) bool {
 		if accept[i] {
 			fmt.Println("input accepted")
 			os.Exit(0)
 		}
+		return true
 	})
 	fmt.Fprintln(os.Stderr, "input not accepted")
 	os.Exit(1)
